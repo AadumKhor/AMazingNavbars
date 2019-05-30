@@ -1,90 +1,35 @@
 import 'package:flutter/material.dart';
-import 'package:vector_math/vector_math_64.dart' as math;
 
-import 'ClipOvalNavbar.dart';
- 
-void main() => runApp(MyApp());
- 
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Material App',
-      home: Home()
-    );
-  }
-}
-
-class Home extends StatefulWidget {
-  @override
-  _HomeState createState() => _HomeState();
-}
-
-class _HomeState extends State<Home> with SingleTickerProviderStateMixin{
- List<Color> colors = [Colors.blue ,Colors.red , Colors.orange , Colors.yellow];
-
-  AnimationController controller;
-  int selectedIndex = 0;
-
-  @override
-  void initState() {
-    controller = new AnimationController(
-        vsync: this, duration: Duration(milliseconds: 500));
-    controller.addListener(() {
-      setState(() {});
-    });
-    super.initState();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(color: colors[selectedIndex],),
-      bottomNavigationBar: ClipOvalNavbar(
-        selectedIndex: selectedIndex,
-        bgColor: colors[selectedIndex],
-        tapCallback: (int index) {
-          controller.reset();
-          controller.forward();
-          selectedIndex = index;
-        },
-        names: ['Home' , 'Card' , 'Lock' , 'Profile'],
-        icons: [
-          Icons.home,
-          Icons.shopping_cart,
-          Icons.lock_outline,
-          Icons.person_add
-        ],
-      ),
-    );
-  }
-}
-
-class NavBar extends StatefulWidget {
-  final List<IconData>
-      icons; //icons taht it will contain we can add text as well
-  final int selectedIndex; // which icon is selected
-  final Color bgColor; //color of the navbar that can be varied by the user
+class ClipOvalNavbar extends StatefulWidget {
+  final List<IconData> icons;
   final List<String> names;
+  final Color bgColor;
+  final Color textColor;
+  final Color iconColor;
+  final int selectedIndex;
 
-  final Function touchCallback; //callback to check if navbar is clicked
+  final Function tapCallback;
 
-  NavBar(
+  ClipOvalNavbar(
       {Key key,
-      this.icons = const [],
-      this.names = const [],
-      this.bgColor = Colors.black,
-      this.selectedIndex = 0,
-      @required this.touchCallback})
+      this.bgColor,
+      this.iconColor,
+      this.icons,
+      this.names,
+      this.selectedIndex,
+      @required this.tapCallback,
+      this.textColor})
       : super(key: key);
-
   @override
-  _NavBarState createState() => _NavBarState(selectedIndex: selectedIndex);
+  _ClipOvalNavbarState createState() =>
+      _ClipOvalNavbarState(selectedIndex: selectedIndex);
 }
 
-class _NavBarState extends State<NavBar> with SingleTickerProviderStateMixin {
-  int selectedIndex = 0; // which is selected
-  int newIndex = 0; // new one that is to be selected
+class _ClipOvalNavbarState extends State<ClipOvalNavbar>
+    with SingleTickerProviderStateMixin {
+  int selectedIndex = 0;
+  int newIndex = 0;
+
   final _circleBottomPosition = 50 + kBottomNavigationBarHeight * 0.4;
   final double kCircleSize = 62.0;
 
@@ -95,7 +40,8 @@ class _NavBarState extends State<NavBar> with SingleTickerProviderStateMixin {
 
   Size _size; // to determine the size of the circle
 
-  _NavBarState({this.selectedIndex}); // need to access this to update state
+  _ClipOvalNavbarState(
+      {this.selectedIndex}); // need to access this to update state
 
   @override
   void initState() {
@@ -182,7 +128,7 @@ class _NavBarState extends State<NavBar> with SingleTickerProviderStateMixin {
   // to check and update teh interactions
   void tapped(int index, bool userInteraction) {
     if (userInteraction) {
-      widget.touchCallback(index);
+      widget.tapCallback(index);
     }
     newIndex = index;
     positionAnim = Tween<double>(begin: selectedIndex * 1.0, end: index * 1.0)
@@ -196,7 +142,7 @@ class _NavBarState extends State<NavBar> with SingleTickerProviderStateMixin {
 
   //function to update the widget
   @override
-  void didUpdateWidget(NavBar oldWidget) {
+  void didUpdateWidget(ClipOvalNavbar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.selectedIndex == widget.selectedIndex) {
       return;
@@ -300,76 +246,5 @@ class _NavBarState extends State<NavBar> with SingleTickerProviderStateMixin {
         ],
       ),
     );
-  }
-}
-
-class NavBarClipper extends CustomClipper<Path> {
-  final numberOfIcons; // number of icons in the navbar
-  final iconHeight = 52.0; // height of icons
-  final topPaddingFactor = 0.2; //space to be left from the main page
-
-  final double animatedIndex; // index of animation
-
-  NavBarClipper(this.animatedIndex, this.numberOfIcons);
-
-  @override
-  Path getClip(Size size) {
-    final sectionWidth = size.width / numberOfIcons;
-    var path = new Path();
-    path.moveTo(0.0, 0.0);
-
-    // Draw notch
-
-    final curveControlOffset = sectionWidth * 0.45;
-
-    final topPadding = topPaddingFactor * size.height;
-
-    path.lineTo((animatedIndex * sectionWidth) - curveControlOffset, 0);
-
-    final firstControlPoint = Offset((animatedIndex * sectionWidth), 0);
-
-    final secondControlPoint =
-        Offset((animatedIndex * sectionWidth), iconHeight);
-    final secondEndPoint =
-        Offset((animatedIndex * sectionWidth) + curveControlOffset, iconHeight);
-
-    path.cubicTo(
-        firstControlPoint.dx,
-        firstControlPoint.dy,
-        secondControlPoint.dx,
-        secondControlPoint.dy,
-        secondEndPoint.dx,
-        secondEndPoint.dy);
-
-    path.lineTo(
-        ((animatedIndex + 1) * sectionWidth) - curveControlOffset, iconHeight);
-    final thirdControlPoint =
-        Offset(((animatedIndex + 1) * sectionWidth), iconHeight);
-
-    final fourthControlPoint = Offset(((animatedIndex + 1) * sectionWidth), 0);
-    final fourthEndPoint =
-        Offset(((animatedIndex + 1) * sectionWidth) + curveControlOffset, 0);
-
-    path.cubicTo(
-        thirdControlPoint.dx,
-        thirdControlPoint.dy,
-        fourthControlPoint.dx,
-        fourthControlPoint.dy,
-        fourthEndPoint.dx,
-        fourthEndPoint.dy);
-    path.lineTo(size.width, 0);
-
-    path = path
-        .transform(Matrix4.translation(math.Vector3(0, topPadding, 0)).storage);
-
-    path.lineTo(size.width, size.height);
-    path.lineTo(0, size.height);
-    path.close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(CustomClipper oldClipper) {
-    return (oldClipper as NavBarClipper).animatedIndex != animatedIndex;
   }
 }
