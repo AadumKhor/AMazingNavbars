@@ -42,7 +42,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin{
       body: Container(color: colors[selectedIndex],),
       bottomNavigationBar: ClipOvalNavbar(
         selectedIndex: selectedIndex,
-        bgColor: colors[selectedIndex],
+        bgColor: Colors.white,
         tapCallback: (int index) {
           controller.reset();
           controller.forward();

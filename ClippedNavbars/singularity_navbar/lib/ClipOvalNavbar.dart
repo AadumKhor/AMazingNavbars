@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vector_math/vector_math_64.dart' as math;
 
 class ClipOvalNavbar extends StatefulWidget {
   final List<IconData> icons;
@@ -83,23 +84,9 @@ class _ClipOvalNavbarState extends State<ClipOvalNavbar>
               child: Container(
                 height: kBottomNavigationBarHeight * 1.6,
                 width: _size.width / 5,
-                child: Column(
-                  children: <Widget>[
-                    Icon(
-                      widget.icons[i],
-                      color: Colors.grey,
-                    ),
-                    SizedBox(
-                      height: 5.0,
-                    ),
-                    Text(
-                      getNameOfIcon(),
-                      style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15.0),
-                    )
-                  ],
+                child: Icon(
+                  widget.icons[i],
+                  color: Colors.black,
                 ),
               ),
             ),
@@ -199,7 +186,7 @@ class _ClipOvalNavbarState extends State<ClipOvalNavbar>
         children: <Widget>[
           ClipPath(
             clipBehavior: Clip.antiAlias,
-            clipper: NavBarClipper(
+            clipper: NavbarClipper(
                 controller.isAnimating
                     ? positionAnim.value
                     : selectedIndex * 1.0,
@@ -246,5 +233,40 @@ class _ClipOvalNavbarState extends State<ClipOvalNavbar>
         ],
       ),
     );
+  }
+}
+
+class NavbarClipper extends CustomClipper<Path> {
+  final numberOfIcons;
+  final iconHeight = 52.0;
+  final topPaddingFactor = 0.2;
+
+  double animatedIndex;
+
+  NavbarClipper(this.animatedIndex, this.numberOfIcons);
+
+  @override
+  Path getClip(Size size) {
+    final sectionWidth = size.width / numberOfIcons;
+    var path = new Path();
+    path.moveTo(0.0, 0.0);
+    final curveControlOffset = sectionWidth;
+    final topPadding = topPaddingFactor * size.height;
+
+    path.moveTo((animatedIndex * sectionWidth) - curveControlOffset, 0);
+    path.quadraticBezierTo(sectionWidth/2, size.height, sectionWidth, 0.0);
+    path.moveTo(((animatedIndex + 1) * sectionWidth) - curveControlOffset, 0.0);
+    path = path.transform(
+        Matrix4.translation(math.Vector3(0, topPadding - 8, 0)).storage);
+    path.lineTo(sectionWidth, 0.0);
+    path.lineTo(size.width, 0);
+    path.lineTo(size.width, size.height);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) {
+    return (oldClipper as NavbarClipper).animatedIndex != animatedIndex;
   }
 }
