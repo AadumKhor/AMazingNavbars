@@ -1,56 +1,53 @@
 import 'package:flutter/material.dart';
-import 'package:vector_math/vector_math_64.dart' as math;
+import 'package:vector_math/vector_math.dart' as math;
 
-class ClipOvalNavbar extends StatefulWidget {
+class BulgeUpNavbar extends StatefulWidget {
   final List<IconData> icons;
-  final List<String> names;
   final Color bgColor;
   final Color textColor;
-  final Color iconColor;
+  final List<String> names;
   final int selectedIndex;
 
   final Function tapCallback;
 
-  ClipOvalNavbar(
+  BulgeUpNavbar(
       {Key key,
       this.bgColor,
-      this.iconColor,
       this.icons,
       this.names,
       this.selectedIndex,
       @required this.tapCallback,
       this.textColor})
       : super(key: key);
+
   @override
-  _ClipOvalNavbarState createState() =>
-      _ClipOvalNavbarState(selectedIndex: selectedIndex);
+  _BulgeUpNavbarState createState() =>
+      _BulgeUpNavbarState(selectedIndex: selectedIndex);
 }
 
-class _ClipOvalNavbarState extends State<ClipOvalNavbar>
+class _BulgeUpNavbarState extends State<BulgeUpNavbar>
     with SingleTickerProviderStateMixin {
+  Size _size;
+
   int selectedIndex = 0;
   int newIndex = 0;
-
   final _circleBottomPosition = 50 + kBottomNavigationBarHeight * 0.4;
   final double kCircleSize = 62.0;
 
-  Animation<double> positionAnim; // when it is positioned
-  Animation<double> riseAnim; // when it rises  to place
-  Animation<double> sinkAnim; // when it falls to place
-  AnimationController controller; // controller as usual
+  Animation<double> posAnim;
+  Animation<double> sinkAnim;
+  Animation<double> riseAnim;
+  AnimationController controller;
 
-  Size _size; // to determine the size of the circle
-
-  _ClipOvalNavbarState(
-      {this.selectedIndex}); // need to access this to update state
+  _BulgeUpNavbarState({this.selectedIndex});
 
   @override
   void initState() {
     controller = new AnimationController(
         vsync: this, duration: Duration(milliseconds: 500));
-    positionAnim = new Tween<double>(
-            begin: (selectedIndex) * 1.0, end: (selectedIndex + 1) * 1.0)
-        .animate(CurvedAnimation(curve: Curves.bounceIn, parent: controller));
+    posAnim = new Tween<double>(
+            begin: selectedIndex * 1.0, end: (selectedIndex + 1) * 1.0)
+        .animate(CurvedAnimation(parent: controller, curve: Curves.bounceIn));
     sinkAnim = new Tween<double>(begin: 0.0, end: _circleBottomPosition)
         .animate(CurvedAnimation(
             parent: controller,
@@ -68,8 +65,12 @@ class _ClipOvalNavbarState extends State<ClipOvalNavbar>
     super.initState();
   }
 
-  // when the icons are in natural state they would be according
-  // to this list.
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
   List<Widget> smallIcons() {
     List<Widget> icons = [];
     for (int i = 0; i < widget.icons.length; i++) {
@@ -101,7 +102,7 @@ class _ClipOvalNavbarState extends State<ClipOvalNavbar>
   //method copied from stackoverflow
   double getOpacityForIndex(int index) {
     if (controller.isAnimating) {
-      var dist = (index - positionAnim.value).abs();
+      var dist = (index - posAnim.value).abs();
       if (dist >= 1) {
         return 1;
       } else {
@@ -118,18 +119,17 @@ class _ClipOvalNavbarState extends State<ClipOvalNavbar>
       widget.tapCallback(index);
     }
     newIndex = index;
-    positionAnim = Tween<double>(begin: selectedIndex * 1.0, end: index * 1.0)
+    posAnim = Tween<double>(begin: selectedIndex * 1.0, end: index * 1.0)
         .animate(CurvedAnimation(
       parent: controller,
       curve: Curves.ease,
     ));
-
     controller.forward();
   }
 
   //function to update the widget
   @override
-  void didUpdateWidget(ClipOvalNavbar oldWidget) {
+  void didUpdateWidget(BulgeUpNavbar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.selectedIndex == widget.selectedIndex) {
       return;
@@ -165,31 +165,19 @@ class _ClipOvalNavbarState extends State<ClipOvalNavbar>
     );
   }
 
-  String getNameOfIcon() {
-    String name;
-    if (controller.value < 0.5) {
-      name = widget.names[selectedIndex];
-    } else {
-      name = widget.names[newIndex];
-    }
-    return name;
-  }
-
   @override
   Widget build(BuildContext context) {
     _size = MediaQuery.of(context).size;
     final sectionWidth = _size.width / widget.icons.length;
     final circleLeftPadding = (sectionWidth - kCircleSize) / 2;
     return Container(
-      color: widget.bgColor,
+      color: Colors.black,
       child: Stack(
         children: <Widget>[
           ClipPath(
             clipBehavior: Clip.antiAlias,
             clipper: NavbarClipper(
-                controller.isAnimating
-                    ? positionAnim.value
-                    : selectedIndex * 1.0,
+                controller.isAnimating ? posAnim.value : selectedIndex * 1.0,
                 widget.icons.length),
             child: Container(
               height: kBottomNavigationBarHeight * 1.6,
@@ -211,9 +199,7 @@ class _ClipOvalNavbarState extends State<ClipOvalNavbar>
             ),
           ),
           Positioned(
-              left: (controller.isAnimating
-                      ? positionAnim.value
-                      : selectedIndex) *
+              left: (controller.isAnimating ? posAnim.value : selectedIndex) *
                   (_size.width / widget.icons.length),
               top: getCircleYPosition(),
               child: Container(
@@ -236,37 +222,15 @@ class _ClipOvalNavbarState extends State<ClipOvalNavbar>
   }
 }
 
-class NavbarClipper extends CustomClipper<Path> {
-  final numberOfIcons;
-  final iconHeight = 52.0;
-  final topPaddingFactor = 0.2;
-
-  double animatedIndex;
-
-  NavbarClipper(this.animatedIndex, this.numberOfIcons);
-
+class NavbarClipper extends CustomClipper<Rect> {
   @override
-  Path getClip(Size size) {
-    final sectionWidth = size.width / numberOfIcons;
-    var path = new Path();
-    path.moveTo(0.0, 0.0);
-    final curveControlOffset = sectionWidth;
-    final topPadding = topPaddingFactor * size.height;
-
-    path.moveTo((animatedIndex * sectionWidth) - curveControlOffset, 0);
-    path.quadraticBezierTo(sectionWidth/2, size.height, sectionWidth, 0.0);
-    path.moveTo(((animatedIndex + 1) * sectionWidth) - curveControlOffset, 0.0);
-    path = path.transform(
-        Matrix4.translation(math.Vector3(0, topPadding - 8, 0)).storage);
-    path.lineTo(sectionWidth, 0.0);
-    path.lineTo(size.width, 0);
-    path.lineTo(size.width, size.height);
-    path.close();
-    return path;
+  Rect getClip(Size size) {
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height / 2);
+    return rect;
   }
 
   @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) {
-    return (oldClipper as NavbarClipper).animatedIndex != animatedIndex;
+  bool shouldReclip(CustomClipper<Rect> oldClipper) {
+    return true;
   }
 }
